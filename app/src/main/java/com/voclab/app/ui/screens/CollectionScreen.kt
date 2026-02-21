@@ -53,7 +53,7 @@ fun CollectionScreen(viewModel: CollectionViewModel, onNavigateBack: () -> Unit)
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
-            if (selectedCollection == null || selectedCollection!!.isEmpty()) {
+            if (selectedCollection.isNullOrEmpty()) {
                 CollectionListView(
                     collectionNames = collectionNames,
                     onCollectionClick = { viewModel.selectCollection(it) }

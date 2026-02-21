@@ -11,10 +11,13 @@ import kotlinx.coroutines.launch
 
 class CollectionViewModel(private val repository: TranslationRepository) : ViewModel() {
 
-    val collectionNames: StateFlow<List<String>> = MutableStateFlow(emptyList<String>()).also { flow ->
+    private val _collectionNames = MutableStateFlow<List<String>>(emptyList())
+    val collectionNames: StateFlow<List<String>> = _collectionNames
+
+    init {
         viewModelScope.launch {
             repository.getAllCollectionNames().collect { names ->
-                (flow as MutableStateFlow).value = names
+                _collectionNames.value = names
             }
         }
     }

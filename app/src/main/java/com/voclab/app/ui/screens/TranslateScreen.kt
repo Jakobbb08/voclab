@@ -12,33 +12,27 @@ import com.voclab.app.ui.viewmodel.Language
 import com.voclab.app.ui.viewmodel.TranslateUiState
 import com.voclab.app.ui.viewmodel.TranslateViewModel
 import com.voclab.app.ui.viewmodel.supportedLanguages
-import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TranslateScreen(viewModel: TranslateViewModel, onNavigateToCollections: () -> Unit) {
+fun TranslateScreen(viewModel: TranslateViewModel) {
     var inputWord by remember { mutableStateOf("") }
     var selectedLanguage by remember { mutableStateOf(supportedLanguages.first()) }
     val uiState by viewModel.uiState.collectAsState()
-    val savedMessage by viewModel.savedMessage.collectAsState()
+    val ankiMessage by viewModel.ankiMessage.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
-    var showSaveDialog by remember { mutableStateOf(false) }
-    var newCollectionName by remember { mutableStateOf("") }
-    var existingCollections by remember { mutableStateOf<List<String>>(emptyList()) }
-    var currentTranslation by remember { mutableStateOf("") }
-
-    LaunchedEffect(savedMessage) {
-        savedMessage?.let {
+    LaunchedEffect(ankiMessage) {
+        ankiMessage?.let {
             snackbarHostState.showSnackbar(it)
-            viewModel.clearSavedMessage()
+            viewModel.clearAnkiMessage()
         }
     }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBarContent(onNavigateToCollections = onNavigateToCollections)
+            TopAppBar(title = { Text("VocLab") })
         }
     ) { paddingValues ->
         Column(
@@ -77,18 +71,14 @@ fun TranslateScreen(viewModel: TranslateViewModel, onNavigateToCollections: () -
                     }
                 }
                 is TranslateUiState.Success -> {
-                    currentTranslation = state.translatedText
                     TranslationResultCard(translatedText = state.translatedText)
                     Button(
                         onClick = {
-                            scope.launch {
-                                existingCollections = viewModel.getCollectionNames()
-                                showSaveDialog = true
-                            }
+                            viewModel.addToAnkiDroid(state.originalWord, state.translatedText)
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Zu Sammlung hinzufügen")
+                        Text("Zu AnkiDroid hinzufügen")
                     }
                 }
                 is TranslateUiState.Error -> {
@@ -102,88 +92,4 @@ fun TranslateScreen(viewModel: TranslateViewModel, onNavigateToCollections: () -
             }
         }
     }
-
-    if (showSaveDialog) {
-        SaveToCollectionDialog(
-            existingCollections = existingCollections,
-            newCollectionName = newCollectionName,
-            onNewCollectionNameChange = { newCollectionName = it },
-            onSave = { collectionName ->
-                viewModel.saveToCollection(
-                    collectionName = collectionName,
-                    germanWord = inputWord,
-                    translatedWord = currentTranslation,
-                    targetLanguage = selectedLanguage
-                )
-                showSaveDialog = false
-                newCollectionName = ""
-            },
-            onDismiss = {
-                showSaveDialog = false
-                newCollectionName = ""
-            }
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TopAppBarContent(onNavigateToCollections: () -> Unit) {
-    TopAppBar(
-        title = { Text("VocLab") },
-        actions = {
-            TextButton(onClick = onNavigateToCollections) {
-                Text("Sammlungen")
-            }
-        }
-    )
-}
-
-@Composable
-private fun SaveToCollectionDialog(
-    existingCollections: List<String>,
-    newCollectionName: String,
-    onNewCollectionNameChange: (String) -> Unit,
-    onSave: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Zu Sammlung hinzufügen") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (existingCollections.isNotEmpty()) {
-                    Text("Bestehende Sammlungen:")
-                    existingCollections.forEach { name ->
-                        TextButton(
-                            onClick = { onSave(name) },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(name)
-                        }
-                    }
-                    HorizontalDivider()
-                }
-                Text("Neue Sammlung erstellen:")
-                OutlinedTextField(
-                    value = newCollectionName,
-                    onValueChange = onNewCollectionNameChange,
-                    label = { Text("Name der Sammlung") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { if (newCollectionName.isNotBlank()) onSave(newCollectionName) },
-                enabled = newCollectionName.isNotBlank()
-            ) {
-                Text("Speichern")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Abbrechen") }
-        }
-    )
 }
